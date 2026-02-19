@@ -1,0 +1,6 @@
+body { background-color: #121212; color: #fff; }
+.video-container { text-align: center; margin-top: 20px; }
+img { border: 2px solid #333; border-radius: 8px; max-width: 100%; }
+.status-box { margin-top: 20px; padding: 15px; border-radius: 5px; background-color: #1e1e1e; }
+.table-dark { background-color: #1e1e1e; color: #ddd; }
+.video-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; bg: rgba(0,0,0,0.8); z-index: 1000; }

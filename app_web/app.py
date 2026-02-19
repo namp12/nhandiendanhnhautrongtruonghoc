@@ -2,69 +2,67 @@ import sys
 import os
 import cv2
 import time
-import numpy as np
-import torch
+import json
+import datetime
+from flask import Flask, render_template, Response, jsonify, send_from_directory
+from collections import deque
 
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.core.detector import ViolenceDetector
 
-from collections import deque
-import datetime
-import json
+app = Flask(__name__)
 
-# Ensure results directory exists
+# Configuration
+MODEL_PATH = r"e:\Violence_Detection_System\models\best_model.pth"
 RESULTS_DIR = r"e:\Violence_Detection_System\results"
-if not os.path.exists(RESULTS_DIR):
-    os.makedirs(RESULTS_DIR)
-
-# Ensure logs directory exists
 LOGS_DIR = r"e:\Violence_Detection_System\logs"
-if not os.path.exists(LOGS_DIR):
-    os.makedirs(LOGS_DIR)
 LOG_FILE = os.path.join(LOGS_DIR, "violence_history.json")
+
+# Ensure directories exist
+os.makedirs(RESULTS_DIR, exist_ok=True)
+os.makedirs(LOGS_DIR, exist_ok=True)
+
+# Global Variables
+camera = None
+detector = None
+
+def get_detector():
+    global detector
+    if detector is None:
+        print("Loading Model...")
+        detector = ViolenceDetector(model_path=MODEL_PATH)
+    return detector
 
 def calculate_motion(frames):
     """Calculate average pixel difference between consecutive frames"""
     if not frames or len(frames) < 2:
         return 0.0
-    
     diff_sum = 0.0
-    # Convert frames to grayscale for simpler motion calc
-    # frames are RGB numpy arrays
     gray_frames = [cv2.cvtColor(f, cv2.COLOR_RGB2GRAY) for f in frames]
-    
     for i in range(len(gray_frames) - 1):
         diff = cv2.absdiff(gray_frames[i], gray_frames[i+1])
         diff_sum += np.mean(diff)
-        
     return diff_sum / (len(frames) - 1)
 
-def main():
-    MODEL_PATH = r"e:\Violence_Detection_System\models\best_model.pth"
-    CAMERA_ID = 0 
+def generate_frames():
+    global camera
+    if camera is None:
+        camera = cv2.VideoCapture(0)
     
-    print("Initializing Violence Detection System...")
-    detector = ViolenceDetector(model_path=MODEL_PATH)
-    
-    cap = cv2.VideoCapture(CAMERA_ID)
-    if not cap.isOpened():
-        print(f"Error: Could not open camera {CAMERA_ID}")
+    if not camera.isOpened():
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + b'' + b'\r\n')
         return
 
-    print("Camera started. Press 'q' to quit.")
-    
     frames_buffer = []
-    FPS = 0
+    prediction_history = deque(maxlen=5)
     frame_count = 0
     
-    # Smoothing parameters
-    prediction_history = deque(maxlen=5) # Keep last 5 predictions
+    # State variables
     current_label = "Normal"
-    current_conf = 0.0
-    
-    # Recording state
+    # Recording
     is_recording = False
     out = None
     save_path = ""
@@ -72,95 +70,86 @@ def main():
     max_conf = 0.0
     event_label = ""
     
+    detector_instance = get_detector()
+    import numpy as np # Ensure numpy is available inside generator if needed
+
     while True:
-        ret, frame = cap.read()
-        if not ret:
+        success, frame = camera.read()
+        if not success:
             break
             
+        # Resize for consistent processing
         display_frame = cv2.resize(frame, (800, 600))
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         
-        # Temporal Sampling: Every 3rd frame
+        # Buffer logic
         if frame_count % 3 == 0:
             frames_buffer.append(rgb_frame)
-        
         if len(frames_buffer) > 16:
             frames_buffer.pop(0)
             
         # Inference Logic
         if len(frames_buffer) == 16 and frame_count % 5 == 0:
-             # 1. Motion Gate
+             # Motion Gate
              motion_score = calculate_motion(frames_buffer)
-             
-             if motion_score < 5.0: # Threshold for "Stillness"
-                 # If practically no motion, force "Normal"
+             if motion_score < 5.0:
                  pred_label = "Normal (Static)"
                  pred_conf = 1.0
              else:
-                 # 2. Run AI Model
-                 label, conf = detector.predict(frames_buffer)
+                 label, conf = detector_instance.predict(frames_buffer)
                  pred_label = label
                  pred_conf = conf
                  
-             # 3. Smoothing / Voting
+             # Smoothing
              prediction_history.append((pred_label, pred_conf))
-             
-             # Count "Violence" votes in history
              violence_votes = sum(1 for p in prediction_history if p[0] in ['danh_nhau', 'nga'])
              
-             if violence_votes >= 3: # Majority vote
-                 current_label = prediction_history[-1][0] # Use latest violence label
+             if violence_votes >= 3:
+                 current_label = prediction_history[-1][0]
                  current_conf = prediction_history[-1][1]
              else:
                  current_label = "Normal"
                  current_conf = 0.0
-                 
-             print(f"Frame {frame_count}: Motion={motion_score:.2f} | Raw={pred_label} ({pred_conf:.2f}) | Final={current_label}")
 
-        # Draw Output
-        color = (0, 255, 0) # Green
+        # Draw UI
+        color = (0, 255, 0)
         if current_label in ['danh_nhau', 'nga']:
-            color = (0, 0, 255) # Red
+            color = (0, 0, 255)
             cv2.rectangle(display_frame, (0, 0), (800, 600), color, 10)
             cv2.putText(display_frame, f"ALERT: {current_label.upper()}!", (50, 300), 
                         cv2.FONT_HERSHEY_SIMPLEX, 2, color, 3)
         
         cv2.putText(display_frame, f"Status: {current_label}", (10, 40), 
                     cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
-        
+
         # Recording Logic
         if current_label in ['danh_nhau', 'nga']:
             if not is_recording:
-                # Start Recording
                 start_time = datetime.datetime.now()
                 timestamp = start_time.strftime("%Y%m%d_%H%M%S")
                 save_path = os.path.join(RESULTS_DIR, f"violence_{timestamp}.avi")
-                # Use MJPG codec for simplicity
                 fourcc = cv2.VideoWriter_fourcc(*'MJPG')
                 out = cv2.VideoWriter(save_path, fourcc, 20.0, (800, 600))
                 is_recording = True
                 max_conf = current_conf
                 event_label = current_label
-                print(f"[REC] Recording started: {save_path}")
+                print(f"[WEB] Recording started: {save_path}")
             
             if out is not None:
                 out.write(display_frame)
-                cv2.circle(display_frame, (750, 50), 10, (0, 0, 255), -1) # Red recording dot
+                cv2.circle(display_frame, (750, 50), 10, (0, 0, 255), -1)
                 if current_conf > max_conf:
                     max_conf = current_conf
-        
         else:
-            # excessive logic: Stop recording if it was recording
             if is_recording:
                 if out is not None:
                     out.release()
                     out = None
                 is_recording = False
                 
-                # Save JSON Metadata to Central Log
+                # Log Event
                 end_time = datetime.datetime.now()
                 duration = (end_time - start_time).total_seconds()
-                
                 new_event = {
                     "event_type": event_label,
                     "start_time": start_time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -170,40 +159,53 @@ def main():
                     "video_file": os.path.basename(save_path)
                 }
                 
-                # Load existing logs
                 history = []
                 if os.path.exists(LOG_FILE):
                     try:
                         with open(LOG_FILE, 'r', encoding='utf-8') as f:
                             history = json.load(f)
-                            if not isinstance(history, list):
-                                history = [] # Reset if corrupt
-                    except:
-                        history = []
-
-                # Append and Save
-                history.append(new_event)
+                            if not isinstance(history, list): history = []
+                    except: history = []
                 
+                history.append(new_event)
                 with open(LOG_FILE, 'w', encoding='utf-8') as f:
                     json.dump(history, f, indent=4, ensure_ascii=False)
-                    
-                print(f"[REC] Recording saved to {save_path}")
-                print(f"[REC] Event logged to {LOG_FILE}")
-        
-        cv2.imshow('Violence Detection System - Local', display_frame)
+                print(f"[WEB] Event logged: {save_path}")
+
         frame_count += 1
         
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+        # Encode frame
+        ret, buffer = cv2.imencode('.jpg', display_frame)
+        frame_bytes = buffer.tobytes()
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
 
-    cap.release()
-    if out is not None:
-        out.release()
-    cv2.destroyAllWindows()
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-if __name__ == "__main__":
-    main()
+@app.route('/history')
+def history():
+    return render_template('history.html')
 
+@app.route('/video_feed')
+def video_feed():
+    return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
+@app.route('/api/logs')
+def get_logs():
+    if os.path.exists(LOG_FILE):
+        try:
+            with open(LOG_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            return jsonify(data)
+        except:
+            return jsonify([])
+    return jsonify([])
 
+@app.route('/results/<path:filename>')
+def serve_video(filename):
+    return send_from_directory(RESULTS_DIR, filename)
 
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=False)

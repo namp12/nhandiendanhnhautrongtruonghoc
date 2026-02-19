@@ -1,0 +1,18 @@
+[
+    {
+        "event_type": "danh_nhau",
+        "start_time": "2026-02-19 21:27:28",
+        "end_time": "2026-02-19 21:27:28",
+        "duration_seconds": 0.15,
+        "max_confidence": 0.5007,
+        "video_file": "violence_20260219_212728.avi"
+    },
+    {
+        "event_type": "danh_nhau",
+        "start_time": "2026-02-19 21:27:42",
+        "end_time": "2026-02-19 21:27:43",
+        "duration_seconds": 0.96,
+        "max_confidence": 0.8319,
+        "video_file": "violence_20260219_212742.avi"
+    }
+]

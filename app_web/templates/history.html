@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Violence Detection - History Logs</title>
+    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">🛡️ Violence Detection</a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="/">Live Monitor</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/history">History Logs</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <h3>📜 Violence Incident History</h3>
+        <table class="table table-dark table-hover mt-3">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Start Time</th>
+                    <th>Duration (s)</th>
+                    <th>Max Conf.</th>
+                    <th>Evidence</th>
+                </tr>
+            </thead>
+            <tbody id="log-table-body">
+                <!-- Logs will be inserted here -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Video Modal -->
+    <div class="modal fade" id="videoModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content bg-dark">
+                <div class="modal-header">
+                    <h5 class="modal-title">Event Review</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <video id="videoPlayer" controls width="100%">
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+    <script>
+        async function loadLogs() {
+            try {
+                const response = await fetch('/api/logs');
+                const logs = await response.json();
+                const tbody = document.getElementById('log-table-body');
+                tbody.innerHTML = '';
+                
+                // Sort by time descending (newest first)
+                logs.sort((a, b) => new Date(b.start_time) - new Date(a.start_time));
+
+                logs.forEach(log => {
+                    const row = `
+                        <tr>
+                            <td><span class="badge bg-danger">${log.event_type.toUpperCase()}</span></td>
+                            <td>${log.start_time}</td>
+                            <td>${log.duration_seconds}s</td>
+                            <td>${(log.max_confidence * 100).toFixed(0)}%</td>
+                            <td>
+                                <button class="btn btn-sm btn-primary" onclick="playVideo('${log.video_file}')">
+                                    ▶ Play Video
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+            } catch (error) {
+                console.error('Error loading logs:', error);
+            }
+        }
+
+        function playVideo(filename) {
+            const player = document.getElementById('videoPlayer');
+            player.src = `/results/${filename}`;
+            const modal = new bootstrap.Modal(document.getElementById('videoModal'));
+            modal.show();
+            // Stop video when modal closes
+            document.getElementById('videoModal').addEventListener('hidden.bs.modal', function () {
+                player.pause();
+                player.src = "";
+            });
+        }
+
+        // Load logs on start
+        loadLogs();
+        // Refresh every 5 seconds
+        setInterval(loadLogs, 5000);
+    </script>
+</body>
+</html>
