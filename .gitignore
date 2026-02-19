@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# VS Code
+.vscode/
+
+# Datasets (Large files)
+dataset/
+dataset_split/
+data/
+
+# Models (Large files)
+models/
+*.pth
+*.h5
+
+# Results
+results/
+
+# Environment
+.env
+venv/
