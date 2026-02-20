@@ -4,8 +4,10 @@ import cv2
 import time
 import json
 import datetime
-from flask import Flask, render_template, Response, jsonify, send_from_directory
+import numpy as np
+from flask import Flask, render_template, Response, jsonify, send_from_directory, request
 from collections import deque
+from werkzeug.utils import secure_filename
 
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -19,10 +21,13 @@ MODEL_PATH = r"e:\Violence_Detection_System\models\best_model.pth"
 RESULTS_DIR = r"e:\Violence_Detection_System\results"
 LOGS_DIR = r"e:\Violence_Detection_System\logs"
 LOG_FILE = os.path.join(LOGS_DIR, "violence_history.json")
+UPLOADS_DIR = r"e:\Violence_Detection_System\uploads"
+ALLOWED_EXTENSIONS = {'mp4', 'avi', 'mov', 'mkv'}
 
 # Ensure directories exist
 os.makedirs(RESULTS_DIR, exist_ok=True)
 os.makedirs(LOGS_DIR, exist_ok=True)
+os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 # Global Variables
 camera = None
@@ -127,8 +132,9 @@ def generate_frames():
             if not is_recording:
                 start_time = datetime.datetime.now()
                 timestamp = start_time.strftime("%Y%m%d_%H%M%S")
-                save_path = os.path.join(RESULTS_DIR, f"violence_{timestamp}.avi")
-                fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+                save_path = os.path.join(RESULTS_DIR, f"violence_{timestamp}.mp4")
+                # Use avc1 (H.264) codec – natively supported by all browsers
+                fourcc = cv2.VideoWriter_fourcc(*'avc1')
                 out = cv2.VideoWriter(save_path, fourcc, 20.0, (800, 600))
                 is_recording = True
                 max_conf = current_conf
@@ -192,20 +198,164 @@ def history():
 def video_feed():
     return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-@app.route('/api/logs')
-def get_logs():
-    if os.path.exists(LOG_FILE):
-        try:
-            with open(LOG_FILE, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            return jsonify(data)
-        except:
-            return jsonify([])
-    return jsonify([])
+@app.route('/api/logs', methods=['GET', 'POST'])
+def api_logs():
+    # ── GET: return all events ──────────────────────────────────────────────
+    if request.method == 'GET':
+        if os.path.exists(LOG_FILE):
+            try:
+                with open(LOG_FILE, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                return jsonify(data)
+            except Exception:
+                return jsonify([])
+        return jsonify([])
+
+    # ── POST: accept a new event from any client (app_local, app_web, etc.) ─
+    event = request.get_json(silent=True)
+    if not event or not isinstance(event, dict):
+        return jsonify({"error": "Invalid JSON body"}), 400
+
+    required = {'event_type', 'start_time', 'video_file'}
+    if not required.issubset(event.keys()):
+        return jsonify({"error": f"Missing fields: {required - event.keys()}"}), 400
+
+    _append_log(event)
+    return jsonify({"status": "ok", "logged": event}), 201
 
 @app.route('/results/<path:filename>')
 def serve_video(filename):
     return send_from_directory(RESULTS_DIR, filename)
+
+@app.route('/uploads/<path:filename>')
+def serve_upload(filename):
+    return send_from_directory(UPLOADS_DIR, filename)
+
+# ── Video Upload & Analysis ──────────────────────────────────────────────────
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def _append_log(event: dict):
+    """Append an event dict to the central JSON log file (thread-safe enough for Flask dev)."""
+    history = []
+    if os.path.exists(LOG_FILE):
+        try:
+            with open(LOG_FILE, 'r', encoding='utf-8') as f:
+                history = json.load(f)
+            if not isinstance(history, list):
+                history = []
+        except Exception:
+            history = []
+    history.append(event)
+    with open(LOG_FILE, 'w', encoding='utf-8') as f:
+        json.dump(history, f, indent=4, ensure_ascii=False)
+
+def analyze_video_file(video_path: str, source_filename: str) -> dict:
+    """
+    Analyse a video file for violence events.
+    Returns a summary dict with list of detected events.
+    """
+    det = get_detector()
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        return {"error": "Cannot open video", "events": []}
+
+    fps = cap.get(cv2.CAP_PROP_FPS) or 30
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    clip_size = 16
+    step = max(1, clip_size // 2)   # 50 % sliding window
+
+    frames = []
+    frame_idx = 0
+    events = []
+    in_event = False
+    event_start_frame = 0
+    max_conf = 0.0
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frames.append(rgb)
+        frame_idx += 1
+
+        if len(frames) == clip_size:
+            label, conf = det.predict(frames)
+            is_violence = label in ('danh_nhau', 'nga') and conf >= 0.55
+
+            if is_violence and not in_event:
+                in_event = True
+                event_start_frame = frame_idx - clip_size
+                max_conf = conf
+                event_label = label
+            elif is_violence and in_event:
+                if conf > max_conf:
+                    max_conf = conf
+                    event_label = label
+            elif not is_violence and in_event:
+                in_event = False
+                start_sec = round(event_start_frame / fps, 2)
+                end_sec   = round(frame_idx / fps, 2)
+                new_event = {
+                    "source":      "upload",
+                    "video_file":  source_filename,
+                    "event_type":  event_label,
+                    "start_time":  datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "start_sec":   start_sec,
+                    "end_sec":     end_sec,
+                    "duration_seconds": round(end_sec - start_sec, 2),
+                    "max_confidence":   float(round(max_conf, 4)),
+                }
+                events.append(new_event)
+                _append_log(new_event)
+
+            frames = frames[step:]   # slide window
+
+    # If video ended while still in an event
+    if in_event:
+        start_sec = round(event_start_frame / fps, 2)
+        end_sec   = round(frame_idx / fps, 2)
+        new_event = {
+            "source":      "upload",
+            "video_file":  source_filename,
+            "event_type":  event_label,
+            "start_time":  datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "start_sec":   start_sec,
+            "end_sec":     end_sec,
+            "duration_seconds": round(end_sec - start_sec, 2),
+            "max_confidence":   float(round(max_conf, 4)),
+        }
+        events.append(new_event)
+        _append_log(new_event)
+
+    cap.release()
+    return {"events": events, "total_frames": total_frames, "fps": fps}
+
+@app.route('/upload', methods=['GET'])
+def upload_page():
+    return render_template('upload.html')
+
+@app.route('/api/upload', methods=['POST'])
+def api_upload():
+    if 'video' not in request.files:
+        return jsonify({"error": "No file part"}), 400
+
+    file = request.files['video']
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+
+    if not allowed_file(file.filename):
+        return jsonify({"error": "File type not allowed"}), 400
+
+    filename  = secure_filename(file.filename)
+    save_path = os.path.join(UPLOADS_DIR, filename)
+    file.save(save_path)
+
+    result = analyze_video_file(save_path, filename)
+    result["filename"] = filename
+    return jsonify(result)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)

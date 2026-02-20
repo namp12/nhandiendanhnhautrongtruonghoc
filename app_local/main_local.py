@@ -13,6 +13,7 @@ from src.core.detector import ViolenceDetector
 from collections import deque
 import datetime
 import json
+import requests
 
 # Ensure results directory exists
 RESULTS_DIR = r"e:\Violence_Detection_System\results"
@@ -24,6 +25,34 @@ LOGS_DIR = r"e:\Violence_Detection_System\logs"
 if not os.path.exists(LOGS_DIR):
     os.makedirs(LOGS_DIR)
 LOG_FILE = os.path.join(LOGS_DIR, "violence_history.json")
+
+# Web API endpoint (used when app_web server is running)
+API_URL = "http://127.0.0.1:5000/api/logs"
+
+def log_event(event: dict):
+    """POST event to web API. Falls back to direct file write if server is offline."""
+    try:
+        r = requests.post(API_URL, json=event, timeout=2)
+        if r.status_code == 201:
+            print(f"[LOG] Event sent to API: {event['event_type']}")
+            return
+    except Exception:
+        pass  # Server not running, fall back to local write
+
+    # Fallback: write directly to JSON file
+    history = []
+    if os.path.exists(LOG_FILE):
+        try:
+            with open(LOG_FILE, 'r', encoding='utf-8') as f:
+                history = json.load(f)
+            if not isinstance(history, list):
+                history = []
+        except Exception:
+            history = []
+    history.append(event)
+    with open(LOG_FILE, 'w', encoding='utf-8') as f:
+        json.dump(history, f, indent=4, ensure_ascii=False)
+    print(f"[LOG] Event saved locally (server offline): {event['event_type']}")
 
 def calculate_motion(frames):
     """Calculate average pixel difference between consecutive frames"""
@@ -134,9 +163,9 @@ def main():
                 # Start Recording
                 start_time = datetime.datetime.now()
                 timestamp = start_time.strftime("%Y%m%d_%H%M%S")
-                save_path = os.path.join(RESULTS_DIR, f"violence_{timestamp}.avi")
-                # Use MJPG codec for simplicity
-                fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+                save_path = os.path.join(RESULTS_DIR, f"violence_{timestamp}.mp4")
+                # Use avc1 (H.264) codec – natively supported by all browsers
+                fourcc = cv2.VideoWriter_fourcc(*'avc1')
                 out = cv2.VideoWriter(save_path, fourcc, 20.0, (800, 600))
                 is_recording = True
                 max_conf = current_conf
@@ -162,33 +191,18 @@ def main():
                 duration = (end_time - start_time).total_seconds()
                 
                 new_event = {
-                    "event_type": event_label,
-                    "start_time": start_time.strftime("%Y-%m-%d %H:%M:%S"),
-                    "end_time": end_time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "source":           "webcam",
+                    "event_type":       event_label,
+                    "start_time":       start_time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "end_time":         end_time.strftime("%Y-%m-%d %H:%M:%S"),
                     "duration_seconds": round(duration, 2),
-                    "max_confidence": float(round(max_conf, 4)),
-                    "video_file": os.path.basename(save_path)
+                    "max_confidence":   float(round(max_conf, 4)),
+                    "video_file":       os.path.basename(save_path)
                 }
                 
-                # Load existing logs
-                history = []
-                if os.path.exists(LOG_FILE):
-                    try:
-                        with open(LOG_FILE, 'r', encoding='utf-8') as f:
-                            history = json.load(f)
-                            if not isinstance(history, list):
-                                history = [] # Reset if corrupt
-                    except:
-                        history = []
-
-                # Append and Save
-                history.append(new_event)
-                
-                with open(LOG_FILE, 'w', encoding='utf-8') as f:
-                    json.dump(history, f, indent=4, ensure_ascii=False)
-                    
+                # Submit event via API (or fallback to local file)
+                log_event(new_event)
                 print(f"[REC] Recording saved to {save_path}")
-                print(f"[REC] Event logged to {LOG_FILE}")
         
         cv2.imshow('Violence Detection System - Local', display_frame)
         frame_count += 1

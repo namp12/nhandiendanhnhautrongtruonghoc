@@ -14,6 +14,7 @@
             <div class="collapse navbar-collapse">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item"><a class="nav-link" href="/">Live Monitor</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/upload">Upload Video</a></li>
                     <li class="nav-item"><a class="nav-link active" href="/history">History Logs</a></li>
                 </ul>
             </div>
@@ -68,14 +69,21 @@
                 logs.sort((a, b) => new Date(b.start_time) - new Date(a.start_time));
 
                 logs.forEach(log => {
+                    // Determine correct video URL based on source
+                    const isUpload   = log.source === 'upload';
+                    const videoPath  = isUpload ? `/uploads/${log.video_file}` : `/results/${log.video_file}`;
+                    const sourceBadge = isUpload
+                        ? '<span class="badge bg-secondary ms-1">Upload</span>'
+                        : '<span class="badge bg-info ms-1">Webcam</span>';
+
                     const row = `
                         <tr>
-                            <td><span class="badge bg-danger">${log.event_type.toUpperCase()}</span></td>
+                            <td><span class="badge bg-danger">${log.event_type.toUpperCase()}</span>${sourceBadge}</td>
                             <td>${log.start_time}</td>
                             <td>${log.duration_seconds}s</td>
                             <td>${(log.max_confidence * 100).toFixed(0)}%</td>
                             <td>
-                                <button class="btn btn-sm btn-primary" onclick="playVideo('${log.video_file}')">
+                                <button class="btn btn-sm btn-primary" onclick="playVideo('${videoPath}')">
                                     ▶ Play Video
                                 </button>
                             </td>
@@ -88,9 +96,9 @@
             }
         }
 
-        function playVideo(filename) {
+        function playVideo(videoPath) {
             const player = document.getElementById('videoPlayer');
-            player.src = `/results/${filename}`;
+            player.src = videoPath;
             const modal = new bootstrap.Modal(document.getElementById('videoModal'));
             modal.show();
             // Stop video when modal closes

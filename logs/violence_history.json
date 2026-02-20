@@ -1,18 +1,75 @@
 [
     {
+        "source": "upload",
+        "video_file": "V_971_flip.mp4",
         "event_type": "danh_nhau",
-        "start_time": "2026-02-19 21:27:28",
-        "end_time": "2026-02-19 21:27:28",
-        "duration_seconds": 0.15,
-        "max_confidence": 0.5007,
-        "video_file": "violence_20260219_212728.avi"
+        "start_time": "2026-02-20 17:11:12",
+        "start_sec": 0.27,
+        "end_sec": 5.2,
+        "duration_seconds": 4.93,
+        "max_confidence": 1.0
+    },
+    {
+        "source": "upload",
+        "video_file": "V_393.mp4",
+        "event_type": "danh_nhau",
+        "start_time": "2026-02-20 17:24:52",
+        "start_sec": 0.0,
+        "end_sec": 2.4,
+        "duration_seconds": 2.4,
+        "max_confidence": 0.9172
+    },
+    {
+        "source": "upload",
+        "video_file": "V_393.mp4",
+        "event_type": "danh_nhau",
+        "start_time": "2026-02-20 17:24:52",
+        "start_sec": 2.14,
+        "end_sec": 5.0,
+        "duration_seconds": 2.86,
+        "max_confidence": 0.9945
     },
     {
         "event_type": "danh_nhau",
-        "start_time": "2026-02-19 21:27:42",
-        "end_time": "2026-02-19 21:27:43",
-        "duration_seconds": 0.96,
-        "max_confidence": 0.8319,
-        "video_file": "violence_20260219_212742.avi"
+        "start_time": "2026-02-20 17:31:04",
+        "end_time": "2026-02-20 17:31:10",
+        "duration_seconds": 6.17,
+        "max_confidence": 0.9986,
+        "video_file": "violence_20260220_173104.mp4"
+    },
+    {
+        "event_type": "danh_nhau",
+        "start_time": "2026-02-20 17:31:10",
+        "end_time": "2026-02-20 17:31:11",
+        "duration_seconds": 0.81,
+        "max_confidence": 0.6343,
+        "video_file": "violence_20260220_173110.mp4"
+    },
+    {
+        "source": "webcam",
+        "event_type": "danh_nhau",
+        "start_time": "2026-02-20 17:32:07",
+        "end_time": "2026-02-20 17:32:14",
+        "duration_seconds": 7.43,
+        "max_confidence": 1.0,
+        "video_file": "violence_20260220_173207.mp4"
+    },
+    {
+        "source": "webcam",
+        "event_type": "danh_nhau",
+        "start_time": "2026-02-20 17:32:18",
+        "end_time": "2026-02-20 17:32:23",
+        "duration_seconds": 4.47,
+        "max_confidence": 0.9998,
+        "video_file": "violence_20260220_173218.mp4"
+    },
+    {
+        "source": "webcam",
+        "event_type": "danh_nhau",
+        "start_time": "2026-02-20 17:32:25",
+        "end_time": "2026-02-20 17:32:25",
+        "duration_seconds": 0.29,
+        "max_confidence": 0.7136,
+        "video_file": "violence_20260220_173225.mp4"
     }
 ]
