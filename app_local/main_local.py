@@ -54,6 +54,27 @@ def log_event(event: dict):
         json.dump(history, f, indent=4, ensure_ascii=False)
     print(f"[LOG] Event saved locally (server offline): {event['event_type']}")
 
+import subprocess
+import imageio_ffmpeg
+
+def convert_to_h264(src_path):
+    """Convert mp4v video to H.264 for browser playback using ffmpeg."""
+    try:
+        ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+        tmp_path = src_path + ".tmp.mp4"
+        subprocess.run([
+            ffmpeg_exe, "-y", "-i", src_path,
+            "-vcodec", "libx264", "-preset", "ultrafast",
+            "-movflags", "+faststart",
+            tmp_path
+        ], capture_output=True, timeout=60)
+        os.replace(tmp_path, src_path)
+        print(f"[CONVERT] {os.path.basename(src_path)} -> H.264 OK")
+    except Exception as e:
+        print(f"[CONVERT] Failed: {e}")
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
 def calculate_motion(frames):
     """Calculate average pixel difference between consecutive frames"""
     if not frames or len(frames) < 2:
@@ -141,8 +162,9 @@ def main():
                  current_label = prediction_history[-1][0] # Use latest violence label
                  current_conf = prediction_history[-1][1]
              else:
-                 current_label = "Normal"
-                 current_conf = 0.0
+                 # Show the actual predicted action (di, dung, ngoi...)
+                 current_label = pred_label
+                 current_conf = pred_conf
                  
              print(f"Frame {frame_count}: Motion={motion_score:.2f} | Raw={pred_label} ({pred_conf:.2f}) | Final={current_label}")
 
@@ -164,8 +186,8 @@ def main():
                 start_time = datetime.datetime.now()
                 timestamp = start_time.strftime("%Y%m%d_%H%M%S")
                 save_path = os.path.join(RESULTS_DIR, f"violence_{timestamp}.mp4")
-                # Use avc1 (H.264) codec – natively supported by all browsers
-                fourcc = cv2.VideoWriter_fourcc(*'avc1')
+                # Use mp4v codec (available on all OpenCV installations)
+                fourcc = cv2.VideoWriter_fourcc(*'mp4v')
                 out = cv2.VideoWriter(save_path, fourcc, 20.0, (800, 600))
                 is_recording = True
                 max_conf = current_conf
@@ -203,6 +225,8 @@ def main():
                 # Submit event via API (or fallback to local file)
                 log_event(new_event)
                 print(f"[REC] Recording saved to {save_path}")
+                # Convert to H.264 for browser playback
+                convert_to_h264(save_path)
         
         cv2.imshow('Violence Detection System - Local', display_frame)
         frame_count += 1

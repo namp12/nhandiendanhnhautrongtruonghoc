@@ -71,5 +71,21 @@
         "duration_seconds": 0.29,
         "max_confidence": 0.7136,
         "video_file": "violence_20260220_173225.mp4"
+    },
+    {
+        "event_type": "danh_nhau",
+        "start_time": "2026-02-20 17:51:09",
+        "end_time": "2026-02-20 17:51:14",
+        "duration_seconds": 5.18,
+        "max_confidence": 1.0,
+        "video_file": "violence_20260220_175109.mp4"
+    },
+    {
+        "event_type": "danh_nhau",
+        "start_time": "2026-02-20 18:06:45",
+        "end_time": "2026-02-20 18:06:51",
+        "duration_seconds": 6.0,
+        "max_confidence": 0.9972,
+        "video_file": "violence_20260220_180645.mp4"
     }
 ]
