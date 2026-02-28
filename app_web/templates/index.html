@@ -1,40 +1,57 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Violence Detection - Live Dashboard</title>
-    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    <title>Violence Detection - Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #0d0d0d; color: #fff; font-family: 'Inter', sans-serif; }
+        .feed-container { border: 2px solid #222; border-radius: 12px; overflow: hidden; background: #000; }
+        .status-card { background: #151515; border: 1px solid #222; border-radius: 12px; padding: 20px; }
+        .nav-link.active { font-weight: bold; border-bottom: 2px solid #fff; }
+    </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-secondary">
         <div class="container">
             <a class="navbar-brand" href="/">🛡️ Violence Detection</a>
             <div class="collapse navbar-collapse">
                 <ul class="navbar-nav ms-auto">
-                    <li class="nav-item"><a class="nav-link active" href="/">Live Monitor</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/upload">Upload Video</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/history">History Logs</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/">Giám sát</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/testing">Thử nghiệm (Báo cáo)</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/upload">Upload</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/history">Lịch sử</a></li>
                 </ul>
             </div>
         </div>
     </nav>
 
     <div class="container mt-4">
-        <div class="row">
-            <div class="col-md-8 mx-auto video-container">
-                <h3>🔴 Live Camera Feed</h3>
-                <img src="{{ url_for('video_feed') }}" alt="Live Feed">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <h3 class="mb-4">🔴 Live Camera Feed</h3>
+                <div class="feed-container">
+                    <img src="/video_feed" width="100%" alt="Camera Stream">
+                </div>
                 
-                <div class="status-box">
-                    <h5>System Status</h5>
-                    <p class="text-success">✅ System Running Normal</p>
-                    <small>AI Model: ResNet-3D (R3D-18)</small>
+                <div class="status-card mt-4">
+                    <h5>Trạng thái hệ thống</h5>
+                    <p id="currStat">Đang khởi động AI...</p>
+                    <div class="progress" style="height: 5px; background: #333;">
+                        <div id="statBar" class="progress-bar bg-success" role="progressbar" style="width: 100%"></div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+    <script>
+        setInterval(() => {
+            fetch('/api/current_prediction').then(r => r.json()).then(data => {
+                document.getElementById('currStat').innerText = `Hành vi: ${data.label} (Confidence: ${data.confidence}%)`;
+                document.getElementById('statBar').className = data.status === "DANGER" ? "progress-bar bg-danger" : "progress-bar bg-success";
+            });
+        }, 1000);
+    </script>
 </body>
 </html>

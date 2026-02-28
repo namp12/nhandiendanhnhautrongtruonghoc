@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thử Nghiệm Nhận Diện - Báo Cáo Kỹ Thuật</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f0f0; margin: 0; padding: 20px; }
+        .header { background-color: #4a76c0; color: white; padding: 20px; text-align: center; border-radius: 10px; font-size: 24px; font-weight: bold; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .container { max-width: 900px; margin: 0 auto; background: white; border: 1px solid #ccc; padding: 0; border-radius: 8px; overflow: hidden; }
+        .top-panel { background-color: #eeeeee; padding: 20px; text-align: center; border-bottom: 2px solid #ddd; }
+        .activity-text { font-size: 22px; margin-bottom: 10px; }
+        .label-val { font-weight: bold; font-size: 28px; color: #333; }
+        .metrics { font-size: 18px; line-height: 1.6; color: #444; }
+        .charts-panel { padding: 20px; }
+        .chart-container { margin-bottom: 30px; border-top: 1px solid #eee; padding-top: 15px; }
+        .chart-title { text-align: center; font-weight: bold; font-size: 16px; margin-bottom: 10px; color: #666; }
+        .controls { text-align: center; padding: 15px; background: #f9f9f9; border-top: 1px solid #ddd; }
+        button { padding: 8px 25px; margin: 0 10px; border-radius: 5px; border: 1px solid #999; cursor: pointer; background: #fff; }
+        button:hover { background: #eee; }
+        .live-feed-mini { float: right; width: 200px; border: 2px solid #333; margin-top: -120px; margin-right: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">Thử nghiệm nhận diện</div>
+
+    <div class="container">
+        <div class="top-panel">
+            <div class="activity-text">Hoạt động hiện tại:</div>
+            <div id="label" class="label-val">Đang tải...</div>
+            <div class="metrics">
+                <div>Confidence: <span id="confidence">0</span>%</div>
+                <div>Độ ổn định: <span id="stability">Trung bình</span></div>
+                <div>Inference: <span id="inference">0</span>ms</div>
+            </div>
+            <img src="/video_feed" class="live-feed-mini">
+        </div>
+
+        <div class="charts-panel">
+            <div class="chart-container">
+                <div class="chart-title">Độ tin cậy (Confidence %)</div>
+                <canvas id="confidenceChart" height="150"></canvas>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title">Inference Time & Motion Score</div>
+                <canvas id="motionChart" height="150"></canvas>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button>Bắt đầu</button>
+            <button>Dừng</button>
+        </div>
+    </div>
+
+    <script>
+        const ctxConf = document.getElementById('confidenceChart').getContext('2d');
+        const ctxMotion = document.getElementById('motionChart').getContext('2d');
+
+        const confChart = new Chart(ctxConf, {
+            type: 'line',
+            data: {
+                labels: Array(30).fill(''),
+                datasets: [{
+                    label: 'Confidence',
+                    borderColor: 'rgb(74, 118, 192)',
+                    backgroundColor: 'rgba(74, 118, 192, 0.1)',
+                    data: Array(30).fill(0),
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 0
+                }]
+            },
+            options: {
+                scales: { 
+                    y: { min: 0, max: 100, grid: { color: '#eee' } },
+                    x: { display: false }
+                },
+                plugins: { legend: { display: false } },
+                animation: false
+            }
+        });
+
+        const motionChart = new Chart(ctxMotion, {
+            type: 'line',
+            data: {
+                labels: Array(30).fill(''),
+                datasets: [
+                    {
+                        label: 'Inference (ms)',
+                        borderColor: 'rgb(239, 68, 68)',
+                        data: Array(30).fill(0),
+                        tension: 0.1,
+                        pointRadius: 0
+                    },
+                    {
+                        label: 'Motion Score',
+                        borderColor: 'rgb(34, 197, 94)',
+                        data: Array(30).fill(0),
+                        tension: 0.1,
+                        pointRadius: 0
+                    }
+                ]
+            },
+            options: {
+                scales: { 
+                    y: { min: 0, max: 300, grid: { color: '#eee' } },
+                    x: { display: false }
+                },
+                plugins: { legend: { position: 'top', labels: { boxWidth: 10, font: {size: 10} } } },
+                animation: false
+            }
+        });
+
+        function updateData() {
+            fetch('/api/current_prediction')
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('label').innerText = data.label;
+                    document.getElementById('confidence').innerText = data.confidence;
+                    document.getElementById('inference').innerText = data.inference_time;
+                    
+                    // Update Confidence Chart
+                    confChart.data.datasets[0].data.push(data.confidence);
+                    confChart.data.datasets[0].data.shift();
+                    confChart.update();
+
+                    // Update Motion/Inf Chart
+                    motionChart.data.datasets[0].data.push(data.inference_time);
+                    motionChart.data.datasets[1].data.push(data.motion * 5); // Scale for visibility
+                    motionChart.data.datasets[0].data.shift();
+                    motionChart.data.datasets[1].data.shift();
+                    motionChart.update();
+                    
+                    const stability = data.confidence > 90 ? "Cao" : (data.confidence > 70 ? "Trung bình" : "Thấp");
+                    document.getElementById('stability').innerText = stability;
+                });
+        }
+
+        setInterval(updateData, 500);
+    </script>
+</body>
+</html>

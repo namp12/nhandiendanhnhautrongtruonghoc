@@ -98,12 +98,11 @@ class VideoDataset(Dataset):
 
 def get_transform(mode='train'):
     import torchvision.transforms as T
-    # Simple transform: ToTensor + Normalize
-    # In a real scenario, we might want RandomCrop, Flip for train
-    # But for Video, we need to apply to all frames consistently.
-    # Here we just return a lambda/function that processes the clip (T, H, W, C)
-    
-    def transform_fn(clip):
+class VideoTransform:
+    def __init__(self, mode='train'):
+        self.mode = mode
+
+    def __call__(self, clip):
         # clip is np.array (T, H, W, C) [0-255]
         # Convert to Tensor (C, T, H, W) [0-1]
         buffer = torch.from_numpy(clip).float() / 255.0
@@ -114,8 +113,10 @@ def get_transform(mode='train'):
         # std = torch.tensor([0.22803, 0.22145, 0.216989]).view(3, 1, 1, 1)
         # buffer = (buffer - mean) / std
         return buffer
-        
-    return transform_fn
+
+def get_transform(mode='train'):
+    return VideoTransform(mode=mode)
+
 
 if __name__ == "__main__":
     # Test dataset

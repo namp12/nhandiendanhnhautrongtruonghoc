@@ -2,192 +2,335 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Violence Detection - Upload Video</title>
-    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    <title>Upload Video - Violence Detection</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .drop-zone {
-            border: 2px dashed #555;
-            border-radius: 12px;
-            padding: 40px;
+        body { 
+            background-color: #050505;
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+                radial-gradient(at 50% 0%, hsla(225,39%,30%,0.1) 0, transparent 50%), 
+                radial-gradient(at 100% 0%, hsla(339,49%,30%,0.1) 0, transparent 50%);
+            color: #fff; 
+            font-family: 'Inter', sans-serif; 
+            min-height: 100vh;
+        }
+        
+        .navbar {
+            background: rgba(10, 10, 10, 0.8) !important;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255,255,255,0.05) !important;
+        }
+        .navbar-brand { font-weight: 800; background: linear-gradient(90deg, #fff, #888); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        .upload-container {
+            max-width: 650px;
+            margin: 100px auto 50px;
+        }
+
+        .upload-card { 
+            background: rgba(20, 20, 20, 0.6); 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+            border-radius: 20px; 
+            padding: 50px 40px; 
             text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            backdrop-filter: blur(20px);
+        }
+        
+        .upload-card h2 {
+            font-weight: 800;
+            margin-bottom: 15px;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #fff, #a5b4fc);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .upload-card p {
+            color: #94a3b8;
+            margin-bottom: 35px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        /* Drag & Drop Zone */
+        .drop-zone {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 220px;
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.02);
+            transition: all 0.3s ease;
             cursor: pointer;
-            transition: border-color 0.3s, background 0.3s;
-            background: #1a1a1a;
+            margin-bottom: 25px;
+            position: relative;
+            overflow: hidden;
         }
-        .drop-zone.drag-over {
-            border-color: #0d6efd;
-            background: #0d1b35;
+        
+        .drop-zone:hover {
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.05);
+            transform: translateY(-2px);
         }
-        .drop-zone .icon { font-size: 3rem; }
-        #videoPreview { max-width: 100%; border-radius: 8px; border: 2px solid #333; }
-        .event-badge { font-size: 0.9rem; }
-        .spinner-wrapper { display: none; }
-        .result-section { display: none; }
+
+        .drop-zone i {
+            font-size: 3.5rem;
+            color: #3b82f6;
+            margin-bottom: 15px;
+            transition: transform 0.3s ease;
+        }
+        
+        .drop-zone:hover i {
+            transform: scale(1.1) translateY(-5px);
+        }
+
+        .drop-zone-text {
+            font-weight: 600;
+            color: #cbd5e1;
+            font-size: 1.1rem;
+        }
+        
+        .drop-zone-hint {
+            font-size: 0.85rem;
+            color: #64748b;
+            margin-top: 8px;
+        }
+
+        /* Hidden Input */
+        .drop-zone input[type="file"] {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        /* Upload Button */
+        .btn-upload {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            border: none;
+            border-radius: 12px;
+            padding: 14px 0;
+            width: 100%;
+            font-weight: 600;
+            font-size: 1.05rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+            color: white;
+        }
+        
+        .btn-upload:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.5);
+            background: linear-gradient(135deg, #4f8bf9 0%, #326ded 100%);
+            color: white;
+        }
+        
+        .btn-upload:disabled {
+            background: #333;
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
+            color: #888;
+        }
+
+        /* Alerts */
+        .alert {
+            border-radius: 12px;
+            border: none;
+            font-weight: 500;
+            padding: 16px;
+            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            text-align: left;
+            font-size: 0.95rem;
+        }
+        .alert-success {
+            background: rgba(16, 185, 129, 0.1);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+        .alert-danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        /* File Name Display */
+        #file-name-display {
+            margin-bottom: 20px;
+            font-size: 0.95rem;
+            color: #34d399;
+            font-weight: 600;
+            display: none;
+            padding: 12px;
+            background: rgba(52, 211, 153, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(52, 211, 153, 0.2);
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
         <div class="container">
             <a class="navbar-brand" href="/">🛡️ Violence Detection</a>
-            <div class="collapse navbar-collapse">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
-                    <li class="nav-item"><a class="nav-link" href="/">Live Monitor</a></li>
-                    <li class="nav-item"><a class="nav-link active" href="/upload">Upload Video</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/history">History Logs</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/">Giám sát</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/testing">Thử nghiệm</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/upload">Upload</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/history">Lịch sử</a></li>
                 </ul>
             </div>
         </div>
     </nav>
 
-    <div class="container mt-4">
-        <h3>📁 Upload & Analyze Video</h3>
-        <p class="text-muted">Tải video lên để AI phân tích và phát hiện các hành vi nguy hiểm.</p>
-
-        <!-- Drop Zone -->
-        <div class="drop-zone" id="dropZone">
-            <div class="icon">🎬</div>
-            <h5 class="mt-2">Kéo thả video vào đây hoặc bấm để chọn file</h5>
-            <p class="text-muted small">Hỗ trợ: MP4, AVI, MOV, MKV</p>
-            <input type="file" id="fileInput" accept="video/*" style="display:none;">
-        </div>
-
-        <!-- Video Preview -->
-        <div id="previewSection" class="mt-4" style="display:none;">
-            <h5>📺 Preview</h5>
-            <video id="videoPreview" controls></video>
-            <div class="mt-3">
-                <button class="btn btn-danger btn-lg" id="analyzeBtn">
-                    🔎 Phân Tích Video
+    <div class="container upload-container">
+        <div class="upload-card">
+            <h2>Hệ Thống Phân Tích Nguội</h2>
+            <p>Sử dụng AI tiên tiến, phân tích ma trận điểm để tìm ra hành vi Bạo Lực (Đánh nhau, Ngã) với cấp độ bảo mật cao nhất.</p>
+            
+            <form action="/api/upload" method="post" enctype="multipart/form-data" id="uploadForm">
+                <div class="drop-zone" id="dropZone">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                    <div class="drop-zone-text">Kéo thả Video vào đây để Phân tích</div>
+                    <div class="drop-zone-hint">Hoặc bấm để chọn tệp tin từ máy tính (MP4, AVI, MOV)</div>
+                    <input type="file" name="file" id="fileInput" accept="video/mp4,video/x-m4v,video/avi,video/quicktime,video/*" required>
+                </div>
+                
+                <div id="file-name-display">
+                    <i class="fa-solid fa-file-video me-2"></i> File đã chọn: <span id="file-name-text"></span>
+                </div>
+                
+                <button type="submit" class="btn btn-upload" id="submitBtn">
+                    <i class="fa-solid fa-microchip me-2"></i> Khởi chạy AI Scanners
                 </button>
+            </form>
+            
+            {% if success %}
+                {% if danger %}
+                <div class="result-box mt-4 p-4 text-start" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px;">
+                    <h4 class="text-danger mb-3"><i class="fa-solid fa-triangle-exclamation"></i> Cảnh Báo: Phát Hiện Sự Cố</h4>
+                    <p class="mb-1 text-white">Hành vi: <strong class="text-danger text-uppercase">{{ label }}</strong></p>
+                    <p class="mb-3 text-white">Độ tin cậy: <strong class="text-danger">{{ conf }}%</strong></p>
+                    <div class="ratio ratio-16x9">
+                        <video controls style="border-radius: 8px;">
+                            <source src="{{ video_url }}" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                </div>
+                {% else %}
+                <div class="alert alert-success mt-4">
+                    <i class="fa-solid fa-circle-check me-2"></i> <strong>Thành công!</strong> {{ message }}
+                </div>
+                {% endif %}
+            {% endif %}
+            
+            {% if message and not success %}
+            <div class="alert alert-success mt-4">
+                <i class="fa-solid fa-circle-check me-2"></i> <strong>Thành công!</strong> {{ message }}
             </div>
-        </div>
+            {% endif %}
 
-        <!-- Spinner -->
-        <div class="spinner-wrapper mt-4 text-center" id="spinnerWrapper">
-            <div class="spinner-border text-primary" style="width:3rem;height:3rem;" role="status"></div>
-            <p class="mt-2 text-muted">Đang phân tích video... có thể mất vài phút.</p>
-        </div>
-
-        <!-- Results -->
-        <div class="result-section mt-4" id="resultSection">
-            <h5>🏁 Kết Quả Phân Tích</h5>
-            <div id="summaryBox" class="alert" role="alert"></div>
-
-            <table class="table table-dark table-hover mt-3" id="resultTable" style="display:none;">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Loại Sự Kiện</th>
-                        <th>Thời Điểm Bắt Đầu</th>
-                        <th>Thời Điểm Kết Thúc</th>
-                        <th>Thời Lượng</th>
-                        <th>Độ Tin Cậy</th>
-                    </tr>
-                </thead>
-                <tbody id="resultTableBody"></tbody>
-            </table>
+            
+            {% if error %}
+            <div class="alert alert-danger mt-4">
+                <i class="fa-solid fa-triangle-exclamation me-2"></i> {{ error }}
+            </div>
+            {% endif %}
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
     <script>
-        const dropZone     = document.getElementById('dropZone');
-        const fileInput    = document.getElementById('fileInput');
-        const previewSec   = document.getElementById('previewSection');
-        const videoPreview = document.getElementById('videoPreview');
-        const analyzeBtn   = document.getElementById('analyzeBtn');
-        const spinnerWrap  = document.getElementById('spinnerWrapper');
-        const resultSec    = document.getElementById('resultSection');
-        const summaryBox   = document.getElementById('summaryBox');
-        const resultTable  = document.getElementById('resultTable');
-        const resultBody   = document.getElementById('resultTableBody');
+        const fileInput = document.getElementById('fileInput');
+        const dropZone = document.getElementById('dropZone');
+        const fileNameDisplay = document.getElementById('file-name-display');
+        const fileNameText = document.getElementById('file-name-text');
+        const submitBtn = document.getElementById('submitBtn');
+        const uploadForm = document.getElementById('uploadForm');
 
-        let selectedFile = null;
-
-        // Click to open file dialog
-        dropZone.addEventListener('click', () => fileInput.click());
-
-        // Drag & Drop events
-        dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-        dropZone.addEventListener('drop', e => {
-            e.preventDefault();
-            dropZone.classList.remove('drag-over');
-            const file = e.dataTransfer.files[0];
-            if (file) handleFile(file);
-        });
-
-        fileInput.addEventListener('change', () => {
-            if (fileInput.files[0]) handleFile(fileInput.files[0]);
-        });
-
-        function handleFile(file) {
-            selectedFile = file;
-            const url = URL.createObjectURL(file);
-            videoPreview.src = url;
-            previewSec.style.display = 'block';
-            resultSec.style.display  = 'none';
-        }
-
-        analyzeBtn.addEventListener('click', async () => {
-            if (!selectedFile) return;
-
-            // Show spinner
-            spinnerWrap.style.display = 'block';
-            resultSec.style.display   = 'none';
-            analyzeBtn.disabled       = true;
-
-            const formData = new FormData();
-            formData.append('video', selectedFile);
-
-            try {
-                const res  = await fetch('/api/upload', { method: 'POST', body: formData });
-                const data = await res.json();
-
-                spinnerWrap.style.display = 'none';
-                resultSec.style.display   = 'block';
-                analyzeBtn.disabled       = false;
-
-                if (data.error) {
-                    summaryBox.className = 'alert alert-danger';
-                    summaryBox.textContent = '❌ Lỗi: ' + data.error;
-                    return;
-                }
-
-                const events = data.events || [];
-                if (events.length === 0) {
-                    summaryBox.className = 'alert alert-success';
-                    summaryBox.innerHTML = '✅ <strong>Không phát hiện hành vi đánh nhau</strong> trong video này!';
-                    resultTable.style.display = 'none';
-                } else {
-                    summaryBox.className = 'alert alert-danger';
-                    summaryBox.innerHTML = `⚠️ Phát hiện <strong>${events.length} sự kiện bạo lực</strong>! Đã lưu vào lịch sử.`;
-
-                    resultBody.innerHTML = '';
-                    events.forEach((ev, i) => {
-                        const row = `
-                            <tr>
-                                <td>${i + 1}</td>
-                                <td><span class="badge bg-danger event-badge">${ev.event_type.toUpperCase()}</span></td>
-                                <td>${ev.start_sec}s</td>
-                                <td>${ev.end_sec}s</td>
-                                <td>${ev.duration_seconds}s</td>
-                                <td>${(ev.max_confidence * 100).toFixed(0)}%</td>
-                            </tr>`;
-                        resultBody.innerHTML += row;
-                    });
-                    resultTable.style.display = 'table';
-                }
-            } catch (err) {
-                spinnerWrap.style.display = 'none';
-                analyzeBtn.disabled       = false;
-                summaryBox.className = 'alert alert-danger';
-                summaryBox.textContent = '❌ Lỗi kết nối server: ' + err.message;
-                resultSec.style.display = 'block';
+        // Handle file selection
+        fileInput.addEventListener('change', function(e) {
+            if (this.files && this.files.length > 0) {
+                const fileName = this.files[0].name;
+                fileNameText.textContent = fileName;
+                fileNameDisplay.style.display = 'block';
+                dropZone.style.borderColor = '#34d399';
+                dropZone.style.background = 'rgba(52, 211, 153, 0.05)';
             }
         });
+
+        // Handle form submission to show loading state
+        uploadForm.addEventListener('submit', function() {
+            if (fileInput.files.length > 0) {
+                submitBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin me-2"></i> Hệ thống đang mã hóa...';
+                submitBtn.disabled = true;
+            }
+        });
+
+        // Drag and drop effects
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            dropZone.style.borderColor = '#3b82f6';
+            dropZone.style.background = 'rgba(59, 130, 246, 0.1)';
+        }
+
+        function unhighlight(e) {
+            if (!fileInput.files.length) {
+                dropZone.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                dropZone.style.background = 'rgba(255, 255, 255, 0.02)';
+            } else {
+                dropZone.style.borderColor = '#34d399';
+                dropZone.style.background = 'rgba(52, 211, 153, 0.05)';
+            }
+        }
+        
+        // Handle drop
+        dropZone.addEventListener('drop', function(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            
+            if (files.length > 0) {
+                fileInput.files = files;
+                // Dispatch change event to update UI
+                fileInput.dispatchEvent(new Event('change'));
+            }
+        }, false);
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

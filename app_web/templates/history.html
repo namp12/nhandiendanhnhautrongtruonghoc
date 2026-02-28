@@ -1,117 +1,62 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Violence Detection - History Logs</title>
-    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    <title>Lịch sử - Violence Detection</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #0d0d0d; color: #fff; font-family: 'Inter', sans-serif; }
+        .log-card { background: #151515; border: 1px solid #222; border-radius: 12px; padding: 20px; }
+        table { color: #fff !important; }
+    </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-secondary">
         <div class="container">
             <a class="navbar-brand" href="/">🛡️ Violence Detection</a>
             <div class="collapse navbar-collapse">
                 <ul class="navbar-nav ms-auto">
-                    <li class="nav-item"><a class="nav-link" href="/">Live Monitor</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/upload">Upload Video</a></li>
-                    <li class="nav-item"><a class="nav-link active" href="/history">History Logs</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/">Giám sát</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/testing">Thử nghiệm (Báo cáo)</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/upload">Upload</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/history">Lịch sử</a></li>
                 </ul>
             </div>
         </div>
     </nav>
 
     <div class="container mt-4">
-        <h3>📜 Violence Incident History</h3>
-        <table class="table table-dark table-hover mt-3">
-            <thead>
-                <tr>
-                    <th>Type</th>
-                    <th>Start Time</th>
-                    <th>Duration (s)</th>
-                    <th>Max Conf.</th>
-                    <th>Evidence</th>
-                </tr>
-            </thead>
-            <tbody id="log-table-body">
-                <!-- Logs will be inserted here -->
-            </tbody>
-        </table>
-    </div>
-
-    <!-- Video Modal -->
-    <div class="modal fade" id="videoModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content bg-dark">
-                <div class="modal-header">
-                    <h5 class="modal-title">Event Review</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body text-center">
-                    <video id="videoPlayer" controls width="100%">
-                        Your browser does not support the video tag.
-                    </video>
-                </div>
-            </div>
+        <h3 class="mb-4">📋 Nhật ký phát hiện</h3>
+        <div class="log-card">
+            <table class="table table-dark table-hover">
+                <thead>
+                    <tr>
+                        <th>Hành vi</th>
+                        <th>Bắt đầu</th>
+                        <th>Kết thúc</th>
+                        <th>Video</th>
+                    </tr>
+                </thead>
+                <tbody id="logTable">
+                    <!-- Logs will be loaded here -->
+                </tbody>
+            </table>
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
     <script>
-        async function loadLogs() {
-            try {
-                const response = await fetch('/api/logs');
-                const logs = await response.json();
-                const tbody = document.getElementById('log-table-body');
-                tbody.innerHTML = '';
-                
-                // Sort by time descending (newest first)
-                logs.sort((a, b) => new Date(b.start_time) - new Date(a.start_time));
-
-                logs.forEach(log => {
-                    // Determine correct video URL based on source
-                    const isUpload   = log.source === 'upload';
-                    const videoPath  = isUpload ? `/uploads/${log.video_file}` : `/results/${log.video_file}`;
-                    const sourceBadge = isUpload
-                        ? '<span class="badge bg-secondary ms-1">Upload</span>'
-                        : '<span class="badge bg-info ms-1">Webcam</span>';
-
-                    const row = `
-                        <tr>
-                            <td><span class="badge bg-danger">${log.event_type.toUpperCase()}</span>${sourceBadge}</td>
-                            <td>${log.start_time}</td>
-                            <td>${log.duration_seconds}s</td>
-                            <td>${(log.max_confidence * 100).toFixed(0)}%</td>
-                            <td>
-                                <button class="btn btn-sm btn-primary" onclick="playVideo('${videoPath}')">
-                                    ▶ Play Video
-                                </button>
-                            </td>
-                        </tr>
-                    `;
-                    tbody.innerHTML += row;
-                });
-            } catch (error) {
-                console.error('Error loading logs:', error);
-            }
-        }
-
-        function playVideo(videoPath) {
-            const player = document.getElementById('videoPlayer');
-            player.src = videoPath;
-            const modal = new bootstrap.Modal(document.getElementById('videoModal'));
-            modal.show();
-            // Stop video when modal closes
-            document.getElementById('videoModal').addEventListener('hidden.bs.modal', function () {
-                player.pause();
-                player.src = "";
+        fetch('/api/logs').then(r => r.json()).then(data => {
+            const tbody = document.getElementById('logTable');
+            data.reverse().forEach(log => {
+                const row = `<tr>
+                    <td><span class="badge bg-danger">${log.event_type}</span></td>
+                    <td>${log.start_time}</td>
+                    <td>${log.end_time}</td>
+                    <td><a href="${log.video_file.startsWith('/') ? log.video_file : '/results/' + log.video_file}" class="btn btn-sm btn-outline-info">Xem Video</a></td>
+                </tr>`;
+                tbody.innerHTML += row;
             });
-        }
-
-        // Load logs on start
-        loadLogs();
-        // Refresh every 5 seconds
-        setInterval(loadLogs, 5000);
+        });
     </script>
 </body>
 </html>

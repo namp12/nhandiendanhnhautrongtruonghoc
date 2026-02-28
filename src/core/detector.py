@@ -1,4 +1,4 @@
-import torch
+﻿import torch
 import cv2
 import numpy as np
 from .model import get_model
@@ -50,13 +50,24 @@ class ViolenceDetector:
     def predict(self, clip):
         """
         Predicts action for a single clip (list of frames)
+        Returns:
+            label (str): Top class name
+            confidence (float): Max probability
+            probs (dict): Full probability mapping {class_name: probability}
         """
         with torch.no_grad():
             inputs = self.preprocess_clip(clip)
             outputs = self.model(inputs)
-            probs = torch.nn.functional.softmax(outputs, dim=1)
-            conf, pred_idx = torch.max(probs, 1)
+            probs = torch.nn.functional.softmax(outputs, dim=1).squeeze(0)
+            
+            conf, pred_idx = torch.max(probs, 0)
             
             label = self.classes[pred_idx.item()]
             confidence = conf.item()
-            return label, confidence
+            
+            probs_dict = {
+                self.classes[i]: probs[i].item() 
+                for i in range(len(self.classes))
+            }
+            
+            return label, confidence, probs_dict
