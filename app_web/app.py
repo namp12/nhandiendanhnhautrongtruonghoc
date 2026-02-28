@@ -2,7 +2,6 @@ import sys
 import os
 import cv2
 import time
-import json
 import datetime
 import numpy as np
 from flask import Flask, render_template, Response, jsonify, send_from_directory, request
@@ -32,7 +31,6 @@ app = Flask(__name__)
 MODEL_PATH = r"e:\Violence_Detection_System\models\best_model.pth"
 RESULTS_DIR = r"e:\Violence_Detection_System\results"
 LOGS_DIR = r"e:\Violence_Detection_System\logs"
-LOG_FILE = os.path.join(LOGS_DIR, "violence_history.json")
 UPLOADS_DIR = r"e:\Violence_Detection_System\uploads"
 ALLOWED_EXTENSIONS = {'mp4', 'avi', 'mov', 'mkv'}
 
@@ -397,9 +395,7 @@ def get_logs():
     if db_logs is not None:
         return jsonify(db_logs)
         
-    print("[DB fallback] Mất kết nối DB, đọc từ file JSON thay thế")
-    if os.path.exists(LOG_FILE):
-        with open(LOG_FILE, 'r') as f: return jsonify(json.load(f))
+    print("[DB ERROR] Mất kết nối DB, không thể lấy lịch sử.")
     return jsonify([])
 
 if __name__ == '__main__':
