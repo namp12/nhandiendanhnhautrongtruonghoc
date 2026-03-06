@@ -1,0 +1,29 @@
+﻿Total videos: 822
+Batch 20 done.
+Batch 40 done.
+Batch 60 done.
+Batch 80 done.
+Batch 100 done.
+Batch 120 done.
+Batch 140 done.
+Batch 160 done.
+Batch 180 done.
+Batch 200 done.
+
+==================================================
+              precision    recall  f1-score   support
+
+        chay     0.8571    0.7941    0.8244       136
+   danh_nhau     1.0000    1.0000    1.0000       476
+          di     0.6234    0.7164    0.6667        67
+        dung     0.8627    0.8148    0.8381        54
+         nam     0.9259    0.8929    0.9091        28
+         nga     1.0000    0.8421    0.9143        19
+        ngoi     0.7959    0.9286    0.8571        42
+      normal     0.0000    0.0000    0.0000         0
+
+    accuracy                         0.9197       822
+   macro avg     0.7581    0.7486    0.7512       822
+weighted avg     0.9237    0.9197    0.9208       822
+
+==================================================

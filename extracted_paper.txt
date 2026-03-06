@@ -1,0 +1,850 @@
+National Conference on Artificial Intelligence (FJCAI) - Can Tho, March 27–28, 2026
+Lightweight Streaming Video Models for
+Real-Time School Violence Detection
+1st Thanh-Tung Nguyen
+Faculty of Information Technology
+Dai Nam University
+Hanoi, Vietnam
+tungnt.it2k4@gmail.com
+2nd Anh-Tu Tran
+Faculty of Information Technology
+Dai Nam University
+Hanoi, Vietnam
+Tu05062005@gmail.com
+3rd Quang-Thinh Nguyen
+Faculty of Information Technology
+Dai Nam University
+Hanoi, Vietnam
+nguyenquangthinh080725@gmail.com
+4th Ngoc-Bich-Uyen Vo
+Faculty of Artificial Intelligence
+Posts and Telecommunications Institute of Technology
+Hanoi, Vietnam
+uyenvnb@ptit.edu.vn
+5th Trung-Hieu Le
+Faculty of Information Technology
+Dai Nam University
+Hanoi, Vietnam
+Hieult@dainam.edu.vn
+Abstract—Early detection of school violence is critical for
+student safety but remains challenging under real-time surveil-
+lance and resource constraints. While recent deep learning
+approaches achieve high recognition accuracy, most studies
+overlook deployment feasibility in continuous monitoring sce-
+narios. This work presents a deployment-oriented benchmark
+of lightweight video models for real-time school violence de-
+tection, with a focus on streaming-based architectures. We
+systematically evaluate representative spatiotemporal models,
+including MoViNet streaming variants, under a unified training
+and evaluation protocol. To enhance contextual relevance, we
+introduce RWF-2000+, an extension of the RWF-2000 dataset
+incorporating school-oriented surveillance scenarios. Beyond
+accuracy, we conduct edge-device evaluation on an NVIDIA
+Jetson AGX Orin, analyzing latency, throughput, and mixed-
+precision optimization. Results show that lightweight stream-
+ing models achieve a favorable accuracy-efficiency trade-off,
+enabling real-time on-device inference and highlighting the
+importance of deployment-aware evaluation for practical school
+surveillance systems.
+Index Terms—School violence detection, Real-time video,
+Lightweight models, Streaming networks, Jetson AGX Orin.
+I. INTRODUCTION
+School violence remains a critical societal issue that
+directly threatens students’ physical safety and psychologi-
+cal well-being, with long-term consequences for academic
+performance, mental health, and social development [1].
+Incidents such as physical aggression, bullying, or sudden
+confrontations often occur without clear warning signs and
+may escalate rapidly in crowded educational environments.
+As a result, there is an increasing demand for intelligent
+surveillance systems capable of early detection and timely
+intervention to support safer school environments [2].
+Conventional security practices based on manual mon-
+itoring or rule-based alarm systems are often ineffective
+in real-world school settings. Human operators are prone
+to fatigue and subjective judgment, while rule-based ap-
+proaches struggle to generalize across diverse interaction
+patterns and environmental conditions [3]. Earlier computer
+vision techniques relying on handcrafted features, such as
+optical flow, background subtraction, or trajectory analysis,
+also exhibit limited robustness under variations in view-
+point, illumination, occlusion, and scene complexity, which
+restricts their scalability in practical deployments [4].
+Recent advances in deep learning have significantly im-
+proved automatic violence detection by enabling models
+to learn spatiotemporal representations directly from raw
+video data. Architectures such as 3D Convolutional Neural
+Networks (3D CNNs) and CNN–LSTM hybrids have demon-
+strated promising performance in capturing motion dynamics
+associated with violent behavior [5], [6]. However, these
+models are typically computationally intensive, requiring
+substantial processing power and memory, which makes
+them difficult to deploy in real-time school surveillance
+systems operating under limited hardware and latency con-
+straints.
+Despite these advances, many existing studies continue
+to prioritize recognition accuracy as the primary objective,
+with comparatively less attention given to computational
+efficiency and deployment feasibility. Moreover, commonly
+used benchmarks such as RWF-2000, while effective for
+evaluating generic violence detection, do not fully cap-
+ture the temporal characteristics and contextual diversity of
+authentic school surveillance scenarios. These limitations
+motivate the need for a more school-oriented benchmark
+setting and a systematic evaluation that jointly considers
+recognition performance and runtime efficiency under con-
+sistent experimental conditions.
+In this work, we investigate lightweight deep learning
+models for real-time school violence detection, with a par-
+ticular focus on streaming-based video recognition archi-
+tectures. Instead of aiming solely for peak accuracy, we
+emphasize the balance between detection performance and
+1
+National Conference on Artificial Intelligence (FJCAI) - Can Tho, March 27–28, 2026
+computational efficiency required for practical deployment.
+The main contributions of this study are summarized as
+follows:
+• We construct RWF-2000+, an extended dataset that
+incorporates school-specific surveillance scenarios to
+improve contextual diversity and real-world relevance.
+• We conduct a systematic benchmark of representative
+spatiotemporal architectures, ranging from conventional
+3D CNN and hybrid models to lightweight streaming
+networks, using a unified training and evaluation pro-
+tocol.
+• We provide empirical evidence that lightweight stream-
+ing models, particularly MoViNet-based variants, offer
+a favorable trade-off between recognition accuracy and
+computational efficiency, making them suitable for real-
+time detection of short-duration violent interactions in
+school surveillance systems.
+The remainder of this paper is organized as follows. Sec-
+tion II reviews related work on deep learning–based violence
+detection. Section III describes the proposed RWF-2000+
+dataset and its collection process. Section IV presents the
+experimental protocol and implementation details. Section
+V reports quantitative results, runtime analysis, and edge
+deployment evaluation. Finally, Section VI concludes the
+paper and discusses potential directions for future work.
+II. RELATED WORKS
+A. Video Violence Detection Datasets
+Datasets serve as the foundational component for video-
+based violence detection, determining both the generalization
+capability and stability of deep learning models. Early bench-
+mark datasets, such as the Hockey Fight Dataset, record
+violent encounters during hockey games. However, their
+scope and contextual diversity are limited, representing only
+a narrow form of violence [7]. Other datasets, such as the
+Movies Fight Dataset, increase diversity by extracting clips
+from commercial films; nevertheless, their staged nature
+makes it difficult for models to generalize effectively to
+real-world surveillance scenarios. The RWF-2000 dataset,
+introduced by Cheng et al. [8] has become a standard bench-
+mark in this field. It consists of 2,000 real-world surveillance
+videos labeled as “violent” or “non-violent,” significantly
+improving representativeness and spatiotemporal learning
+potential . Both Vijeikis et al. [7] and Torre [9] confirmed
+that RWF-2000 remains one of the most suitable datasets
+for training and evaluating deep learning models in non-
+laboratory surveillance conditions. More recently, Kaur and
+Singh [10] combined the RWF-2000 and RLVS datasets to
+evaluate a transfer-learning-based ensemble model, demon-
+strating strong generalization across diverse surveillance
+contexts. Similarly, Khan et al. [11] conducted cross-domain
+evaluations involving the RWF-2000, Surveillance Fight, and
+Industrial Surveillance datasets, highlighting model robust-
+ness and stability under varied monitoring environments.
+However, most existing datasets still fail to capture suf-
+ficient diversity in terms of temporal dynamics, illumi-
+nation conditions, and contextual variations, particularly
+within school environments. To bridge this gap, this study
+introduces RWF-2000+, an extended version of the orig-
+inal dataset designed to enhance data diversity, density,
+and realism, thereby improving applicability to educational
+surveillance scenarios.
+B. Deep Learning Models for Violence Detection
+The advancement of deep learning has enabled diverse
+approaches for extracting spatiotemporal representations
+in video-based violence recognition, ranging from hybrid
+CNN–3D CNN pipelines to lightweight architectures de-
+signed for real-time surveillance. Khan et al. [11] proposed a
+three-stage framework that combines lightweight CNNs with
+3D CNNs to jointly model spatial and temporal cues, and
+their cross-domain evaluation reported stable performance
+across multiple surveillance datasets. Kaur and Singh [10]
+introduced a transfer-learning-based ensemble that integrates
+three pretrained backbones with a stacked LSTM, achieving
+strong results on both RLVS and RWF-2000. Along a similar
+direction, Aung et al. [12] presented a dual-stream model that
+fuses human pose and motion dynamics via weighted fusion,
+improving recognition performance on RWF-2000.
+Several works have further emphasized efficiency and
+deployability. Zhu and Hu [13] proposed a lightweight two-
+stream spatiotemporal network deployed in a collaborative
+cloud–edge architecture to reduce computational cost while
+maintaining competitive accuracy on RWF-2000. Wang et al.
+[14] developed an EfficientNet-B0-based model augmented
+with Bi-LTMA and TSM mechanisms to balance accuracy
+and runtime efficiency for surveillance devices. D¨undar et
+al. [15] proposed a shallow 3D CNN with only 54.6K
+parameters, demonstrating that compact architectures can
+achieve reasonable performance across RWF-2000, RLVS,
+and Hockey Fight datasets.
+Beyond RGB-based spatiotemporal CNNs, recent studies
+have explored skeleton/graph representations to improve ro-
+bustness under challenging surveillance conditions. Tran et
+al. [16], [17] model skeleton sequences as spatiotemporal
+graphs and leverage GCN-based designs (with attention
+mechanisms) to capture joint dynamics for violence recog-
+nition on benchmarks such as RWF-2000. Complementary
+to algorithmic advances, system-oriented studies also em-
+phasize practical deployment aspects; for example, Jeevan
+and Avanthika [4] present an intelligent video surveillance
+framework integrating real-time detection modules and post-
+processing to reduce false alarms.
+While recent deep learning–based approaches have re-
+ported strong performance in violence detection, many rely
+on computationally intensive or multi-stream architectures
+that are difficult to deploy in real-time surveillance settings.
+Even among studies that explicitly consider efficiency or
+edge-awareness, evaluations are frequently conducted on
+cloud GPUs or proxy platforms rather than under realistic
+National Conference on Artificial Intelligence (FJCAI) - Can Tho, March 27–28, 2026
+embedded constraints. As a result, a gap remains between
+reported recognition performance and practical deployability,
+particularly for school surveillance scenarios where low
+latency, limited resources, and continuous operation are
+critical.
+III. EXTENDED VIOLENCE BEHAVIOR DATASET
+Existing violence detection datasets, such as RWF-2000,
+have been widely used to evaluate deep learning models;
+however, their applicability to school surveillance scenarios
+remains limited. Most videos were collected from public
+spaces, resulting in differences in context, illumination, and
+camera viewpoints compared with typical school environ-
+ments. Moreover, the violent behaviors captured are often
+large-scale and spontaneous, which do not fully reflect the
+subtle and short-duration interactions commonly observed in
+educational settings. These factors can hinder the effective
+generalization of models in school-oriented surveillance ap-
+plications.
+A. Scientific Basis for Dataset Expansion
+Although RWF-2000 is a widely used benchmark for
+violence detection, its visual context and interaction patterns
+differ from those typically observed in school surveillance.
+Most clips are captured in outdoor or semi-public envi-
+ronments (e.g., streets and commercial areas), resulting in
+camera viewpoints, illumination, crowd density, and inter-
+personal distances that may not transfer well to indoor
+school settings. In contrast, school surveillance often involves
+constrained spaces, more frequent close-range interactions,
+and subtle physical contacts that can challenge violence
+classifiers and increase false alarms.
+To improve contextual relevance and support more reliable
+evaluation in educational scenarios, we introduce an addi-
+tional dataset, termed RWF-2000+. RWF-2000+ is designed
+to (i) broaden viewpoint and illumination diversity represen-
+tative of indoor school cameras, (ii) include school-like inter-
+action patterns through carefully scripted, safety-supervised
+enactments, and (iii) enable evaluation under conditions that
+resemble continuous, real-time school monitoring (e.g., fixed
+camera placement and typical indoor backgrounds).
+The supplementary samples were collected in controlled
+indoor school environments using camera placements consis-
+tent with common classroom surveillance setups. Recordings
+focus on mild physical interactions performed by student
+volunteers under supervision to ensure safety and ethi-
+cal compliance. While these staged scenarios cannot fully
+capture the unpredictability of real incidents, they provide
+additional school-oriented motion patterns and background
+cues that complement the original RWF-2000. Therefore,
+RWF-2000+ is intended to augment–not replace–RWF-2000
+by offering a more school-relevant testbed with increased
+contextual diversity.
+B. Architecture and Organization of the RWF-2000+ Dataset
+The expanded RWF-2000+ dataset contains approximately
+2,540 short surveillance clips annotated into two classes,
+Fight and Non-Fight. Each clip is recorded at 25 frames per
+second (fps) with an average duration of 4–5 seconds, which
+provides standardized segments for clip-level benchmarking
+and captures short-term motion cues relevant to violent in-
+teractions in practical surveillance settings. Importantly, this
+duration does not represent the decision latency of streaming
+models: MoViNet-Stream produces frame-progressive pre-
+dictions and can, in principle, trigger an alert before the end
+of the clip once sufficient evidence is observed. A dedicated
+early-warning protocol to quantify the minimum observation
+window for stable alerting (e.g., sub-second triggering time)
+will be included in an extended version of this benchmark.
+RWF-2000+ combines two complementary sources. The
+first component is the original RWF-2000 benchmark, con-
+sisting of 2,000 real-world surveillance videos collected from
+public areas (e.g., streets, shopping malls, and train stations).
+These clips typically depict spontaneous and unstructured
+events and exhibit substantial variability in viewpoint, illu-
+mination, and crowd density. The second component consists
+of 540 supplementary clips newly recorded in controlled,
+school-like indoor environments with camera viewpoints
+consistent with classroom surveillance setups. These record-
+ings focus on school-relevant interactions performed by
+student volunteers under supervision to ensure safety and
+ethical compliance.
+In the supplementary RWF-2000+ recordings, the Non-
+Fight class focuses on close-proximity but non-violent in-
+teractions that frequently occur in school environments,
+including handshakes, conversations at short interpersonal
+distance, and mild incidental contacts (e.g., brief shoul-
+der/arm bumps). These cases are intentionally included as
+challenging negatives because their spatial proximity and
+short-term motion can resemble pre-fight cues and may lead
+to false positives in real-time surveillance.
+Together, the supplementary data increases contextual
+relevance for educational scenarios while preserving the real-
+world diversity provided by the original RWF-2000 subset.
+Table I
+DATASET STATISTICS AND SPLIT CONFIGURATION.
+Dataset
+Train
+Val.
+Test
+Total
+Fight
+Non-Fight
+RWF-2000
+1400
+300
+300
+2000
+1000
+1000
+RWF-2000+
+1778
+380
+382
+2540
+1270
+1270
+Both datasets are divided into training, validation, and
+testing subsets as summarized in Table I, maintaining a bal-
+anced 1:1 ratio between the Fight and Non-Fight classes. By
+combining diverse public-scene videos with school-oriented
+simulated data, RWF-2000+ extends the contextual diversity
+of the original benchmark and provides a more represen-
+tative evaluation setting for real-world school surveillance
+applications.
+C. Data Collection Setup and Environmental Characteristics
+The supplementary RWF-2000+ videos were recorded
+with a handheld smartphone placed at elevated positions
+National Conference on Artificial Intelligence (FJCAI) - Can Tho, March 27–28, 2026
+Figure 1. Example frames from the RWF-2000+ dataset captured in con-
+trolled school-like environments.
+to approximate the viewpoints of classroom surveillance
+systems. This configuration enables the capture of relevant
+spatial layouts and motion patterns while maintaining a fully
+controlled recording environment.
+Data collection was conducted under varying illumination
+conditions within classroom-like settings to introduce visual
+diversity representative of typical school surveillance scenar-
+ios. All recording sessions were closely supervised to ensure
+safety, consistency, and ethical compliance.
+Each simulated scenario involved a small group of par-
+ticipants enacting mild physical interactions such as brief
+confrontations or pushing commonly observed in educational
+contexts. Representative examples are shown in Figure 1,
+illustrating variations in lighting conditions and subject den-
+sity.
+Although the videos were captured using a mobile device
+rather than fixed CCTV cameras, the camera placements and
+viewing angles were selected to resemble school surveillance
+perspectives. This controlled setup provides a reliable testbed
+for evaluating model robustness under school-oriented visual
+conditions, serving as an intermediate evaluation setting
+between controlled simulations and real-world surveillance
+scenarios.
+IV. SYSTEMATIC BENCHMARK AND EVALUATION
+METHOD
+A. Overview of the Evaluation Framework
+This study presents a systematic benchmarking framework
+to evaluate deep learning models for school violence de-
+tection, with a particular focus on the trade-off between
+recognition accuracy and computational efficiency. Instead
+of proposing new architectures, the framework aims to pro-
+vide a fair and consistent comparison across representative
+models by using a unified training and evaluation protocol,
+while preserving each architecture’s canonical input config-
+uration (e.g., default input resolution and preprocessing).
+Two datasets, RWF-2000 and the school-oriented RWF-
+2000+, are employed to assess both generalization and de-
+ployment relevance. An overview of the evaluation pipeline,
+covering training, testing, and edge deployment, is illustrated
+in Fig. 2.
+B. MoViNet-Stream Architecture and Variant Efficiency
+Analysis
+MoViNet (Mobile Video Network) [18] was selected as
+a representative lightweight architecture due to its design
+explicitly targeting efficient video recognition under resource
+constraints. Compared to conventional 3D CNNs, MoViNet
+introduces architectural features that are well aligned with
+real-time school surveillance requirements:
+• Streaming inference: temporal states are preserved
+across frames, enabling continuous video processing
+with low latency.
+• Temporally separable convolutions: reduce computa-
+tional cost while maintaining sensitivity to short-term
+motion dynamics.
+• Edge-aware design: optimized for deployment on em-
+bedded platforms with limited compute resources.
+To analyze the accuracy–efficiency trade-off, two repre-
+sentative variants were evaluated. MoViNet-A0-Stream em-
+phasizes inference speed and low resource consumption,
+whereas MoViNet-A2-Stream provides increased representa-
+tional capacity at higher computational cost. These variants
+capture two ends of the efficiency spectrum relevant to real-
+time surveillance systems.
+C. Video Preprocessing and Input Configuration
+All models take RGB frame sequences as input. Each
+input video is represented as a fixed-length clip of con-
+secutive frames to capture spatiotemporal dynamics relevant
+to violent behaviors. For evaluation, clips are extracted as
+contiguous frame sequences to preserve motion continuity
+and ensure consistent clip-level measurement across models.
+Input resolutions follow the canonical configuration of
+each model architecture rather than enforcing a single uni-
+form spatial resolution. Specifically, MoViNet-A0-Stream
+adopts 172×172, MoViNet-A2-Stream uses 224×224, C3D-
+based models use 112×112, and X3D-XS + CoAtNet-0 uses
+224 × 224. For all models, the frame rate is fixed at 25 fps
+to ensure consistent temporal sampling.
+During training, clips are randomly sampled along the
+temporal axis and basic geometric augmentations are applied
+to improve generalization under varying surveillance condi-
+tions. During testing, we disable random temporal sampling
+and use a deterministic clip extraction strategy to ensure
+reproducible comparisons.
+D. Training Setup and Evaluation Protocol
+All MoViNet-Stream models were initialized with pre-
+trained weights from the Kinetics-600 dataset and fine-tuned
+independently on the RWF-2000 and RWF-2000+ datasets
+under a unified training protocol.
+The task was formulated as a binary classification problem
+(Fight vs. Non-Fight). Model performance was evaluated
+using complementary metrics, where Top-1 accuracy reflects
+National Conference on Artificial Intelligence (FJCAI) - Can Tho, March 27–28, 2026
+Figure 2. Overview of the proposed experimental evaluation framework for video-based school violence detection.
+Table II
+PERFORMANCE COMPARISON OF DIFFERENT MODELS ON THE RWF-2000 AND RWF-2000+ DATASETS.
+Dataset
+Model
+Pre-trained
+Resolution
+Acc
+Precision
+Recall
+GFLOPs
+Params
+RWF-2000
+X3D-XS + CoAtNet-0
+Kinetics-400 + ImageNet-1K
+224×224
+77.59
+70.29
+95.30
+9.23G
+31.09M
+C3D + EfficientNet-B0
+ImageNet-1K
+112×112
+70.56
+70.19
+71.14
+38.91G
+45.17M
+MoViNet-A0-Stream
+Kinetics-600
+172×172
+89.67
+90.50
+88.70
+1.8G
+1.9M
+MoViNet-A2-Stream
+Kinetics-600
+224×224
+92.00
+97.01
+86.67
+4.9G
+4M
+C3D + LSTM
+–
+112×112
+87.75
+74.00
+95.00
+31.60G
+16.14M
+RWF-2000+
+X3D-XS + CoAtNet-0
+Kinetics-400 + ImageNet-1K
+224×224
+84.81
+77.36
+98.42
+9.23G
+31.09M
+C3D + EfficientNet-B0
+ImageNet-1K
+112×112
+70.15
+69.94
+70.68
+38.91G
+45.17M
+MoViNet-A0-Stream
+Kinetics-600
+172×172
+92.15
+95.48
+88.48
+1.8G
+1.9M
+MoViNet-A2-Stream
+Kinetics-600
+224×224
+95.29
+94.82
+95.81
+4.9G
+4M
+C3D + LSTM
+–
+112×112
+90.00
+87.00
+82.01
+31.60G
+16.14M
+Table III
+CLIP-LEVEL RUNTIME EFFICIENCY COMPARISON ON RWF-2000 AND
+RWF-2000+.
+Dataset
+Model
+Inference (ms)
+Total Time (ms)
+Clips/s
+RWF-2000
+X3D-XS + CoAtNet-0
+13.90
+28.00
+35.71
+C3D + EffNet-B0
+11.06
+23.00
+43.48
+MoViNet-A0-Stream
+20.77
+23.59
+42.39
+MoViNet-A2-Stream
+34.24
+38.16
+26.20
+C3D + LSTM
+33.99
+36.60
+27.32
+RWF-2000+
+X3D-XS + CoAtNet-0
+13.90
+28.00
+35.71
+C3D + EffNet-B0
+11.06
+23.00
+43.48
+MoViNet-A0-Stream
+21.64
+24.30
+42.91
+MoViNet-A2-Stream
+34.10
+38.01
+26.31
+C3D + LSTM
+33.99
+36.60
+27.32
+overall classification performance, and precision and recall
+characterize false-alarm and miss tendencies in surveillance
+settings. Model efficiency was assessed in terms of param-
+eter count, GFLOPs, and clip-level runtime.
+For benchmarking, MoViNet-Stream was compared with
+representative baseline architectures, including X3D-XS +
+CoAtNet-0, C3D + EfficientNet-B0, and C3D + LSTM.
+We used a unified training and evaluation pipeline across
+models, and each model was evaluated under its canonical
+input configuration (as listed in Table II).
+V. EXPERIMENTAL EVALUATION
+A. Experimental Environment
+Model training and accuracy-oriented evaluation were
+conducted on Google Colab Pro using an NVIDIA Tesla
+T4 GPU. This cloud environment provides a controlled
+and reproducible setup for optimization and enables a fair
+comparison across the evaluated architectures.
+All models were trained and evaluated under a unified
+protocol, including the same dataset splits, training schedule,
+and reporting metrics. To avoid unintended handicapping,
+National Conference on Artificial Intelligence (FJCAI) - Can Tho, March 27–28, 2026
+each architecture was executed under its canonical input
+setting (i.e., default input resolution and clip configuration),
+as summarized in Table II. Top-1 accuracy was used as the
+primary metric for the binary Fight/Non-Fight classification
+task. Model efficiency was analyzed using parameter count
+and GFLOPs.
+Deployment-oriented runtime measurements were con-
+ducted separately on an NVIDIA Jetson AGX Orin edge
+device (Section V-C). While the cloud platform is used for
+accuracy benchmarking under controlled conditions, Jetson
+AGX Orin is used to assess clip-level inference latency and
+throughput under practical embedded constraints, supporting
+real-time on-device operation under the tested configuration.
+B. Performance Evaluation
+Figure 3. Accuracy–speed trade-off and detection reliability of evaluated
+models on RWF-2000 and RWF-2000+. (a,c) Top-1 accuracy vs. inference
+speed (throughput); (b,d) Precision and Recall (Fight as the positive class).
+For visualization, speed is normalized within each dataset, while the
+corresponding absolute throughput (clips/s) is annotated; absolute runtime
+results are reported in Table III.
+Table II and Table III, together with Fig. 3, summarize
+recognition performance and clip-level runtime efficiency
+across the evaluated models. Overall, lightweight architec-
+tures, particularly the MoViNet-Stream variants, provide a
+strong accuracy–efficiency trade-off compared with con-
+ventional 3D CNN and hybrid baselines under the tested
+configuration.
+On the RWF-2000 dataset, MoViNet-A2-Stream achieved
+the
+highest
+accuracy
+(92.00%)
+with
+a
+computational
+cost of 4.9 GFLOPs. MoViNet-A0-Stream offers a more
+deployment-oriented operating point, reaching 89.67% ac-
+curacy at only 1.8 GFLOPs while sustaining 42.39 clips/s.
+In contrast, C3D + LSTM attained 87.75% accuracy but
+required substantially higher compute (31.60 GFLOPs) and
+achieved a lower throughput (27.32 clips/s), making it less
+favorable for real-time deployment.
+On
+the
+extended
+RWF-2000+
+dataset,
+performance
+changes are model-dependent. MoViNet-A2-Stream further
+improved accuracy to 95.29%, whereas MoViNet-A0-Stream
+maintained among the highest throughput values (42.91
+clips/s), remaining competitive for low-latency deployment.
+Notably, X3D-XS + CoAtNet-0 also exhibits a noticeable
+Table IV
+CLIP-LEVEL INFERENCE PERFORMANCE OF MOVINET-A0-STREAM ON
+JETSON AGX ORIN. LATENCY IS MEASURED PER INPUT CLIP AND
+THROUGHPUT IS REPORTED IN CLIPS/S.
+Framework
+Model
+Accuracy (%)
+Latency/Clip (ms)
+Clips/s
+PyTorch (FP32)
+MoViNet-A0-Stream
+91.99
+68.76
+14.54
+TensorRT (FP16)
+MoViNet-A0-Stream
+90.05
+14.08
+71.02
+accuracy gain on RWF-2000+, but its computational cost
+remains considerably higher than that of MoViNet-A0-
+Stream. Since the input configuration and evaluation pipeline
+are unchanged, runtime remains largely consistent across
+datasets, and minor differences are attributed to measurement
+variability.
+Fig. 3 visualizes the accuracy throughput trade-off across
+model families, while precision and recall in Table II provide
+complementary evidence on detection reliability, indicating
+different trade-offs between false alarms and missed detec-
+tions.
+Overall, these results suggest that streaming-capable archi-
+tectures with temporally separable convolutions can capture
+short-duration motion patterns efficiently, supporting low-
+latency inference for school-surveillance settings under the
+tested configuration.
+C. Edge AI Deployment on NVIDIA Jetson AGX Orin
+To characterize on-device inference efficiency under em-
+bedded constraints, we benchmarked MoViNet-A0-Stream
+on an NVIDIA Jetson AGX Orin (32GB LPDDR5, 8-core
+Arm Cortex-A78AE CPU, and an Ampere GPU with Tensor
+Cores). Unless otherwise noted, all runtime measurements
+in this section were obtained directly on the Jetson platform.
+MoViNet-A0-Stream was chosen for deployment evalua-
+tion because it offers a favorable accuracy–efficiency trade-
+off in our offline benchmark while incurring substantially
+lower compute cost than larger variants. Given the higher
+parameter count and GFLOPs of MoViNet-A2-Stream, its
+throughput is expected to be lower on embedded hardware;
+therefore, we report on-device results for A0 as the primary
+deployment-oriented operating point.
+For deployment, the model was exported to ONNX and
+optimized with TensorRT using FP16 to leverage mixed-
+precision acceleration on Jetson. As summarized in Table IV,
+the PyTorch FP32 implementation requires 68.76 ms per clip
+(14.54 clips/s), whereas TensorRT FP16 reduces latency to
+14.08 ms per clip and increases throughput to 71.02 clips/s.
+The corresponding accuracy changes modestly (91.99% vs.
+90.05%) under the same evaluation setting. Overall, these
+results show that TensorRT mixed-precision optimization can
+markedly improve clip-level throughput for the evaluated
+configuration on Jetson.
+Finally, MoViNet’s streaming formulation maintains tem-
+poral state across consecutive inputs, which can reduce
+redundant computation relative to non-streaming 3D CNN
+inference. While this deployment study focuses on clip-level
+compute performance rather than full system latency (e.g.,
+National Conference on Artificial Intelligence (FJCAI) - Can Tho, March 27–28, 2026
+Figure 4. Visual interpretation of prediction outcomes from the MoViNet-
+Stream model. (a) False positive: a handshake or close interaction is
+misclassified as violence due to minimal interpersonal distance and rapid
+hand motion. (b) True positive: an actual violent incident characterized by
+strong motion intensity and consistent temporal dynamics.
+capture, preprocessing, and decision logic), the measured
+throughput indicates that on-device inference is unlikely to
+be a computational bottleneck under our tested settings.
+D. Case Study and Error Analysis
+To further analyze the contribution of key design com-
+ponents, a qualitative ablation-style analysis was conducted
+to examine how different modeling factors affect the behav-
+ior of the MoViNet-Stream architecture in realistic school
+surveillance scenarios. Representative prediction cases are
+shown in Figure 4. First, the impact of streaming-based tem-
+poral modeling is observed by comparing predictions under
+short, transient motions versus sustained motion patterns. In
+false positive cases (Figure 4a), brief non-violent interactions
+such as handshakes or close physical contact are occasion-
+ally misclassified as violent. This behavior indicates that
+emphasizing short-term temporal dynamics alone, without
+sufficient contextual persistence, can cause the model to
+overreact to rapid but benign movements.
+Second, the effectiveness of temporal accumulation across
+consecutive frames is evident in true positive examples
+(Figure 4b). When violent actions exhibit consistent and
+high-intensity motion over time, the streaming mechanism
+enables the model to integrate temporal evidence progres-
+sively, leading to stable and confident predictions. This ob-
+servation highlights the importance of continuous temporal
+state propagation in distinguishing genuine violence from
+momentary interactions.
+Third, the influence of training data diversity is reflected
+in the reduction of false negatives when using the extended
+RWF-2000+ dataset. Mild or short-lived confrontations that
+were previously misclassified become easier to detect after
+exposure to school-specific interaction patterns, suggesting
+that contextual diversity plays a complementary role to
+architectural efficiency.
+VI. CONCLUSION AND FUTURE WORK
+This study presented a deployment-aware evaluation of
+deep learning models for school violence detection, em-
+phasizing the trade-off between recognition accuracy and
+computational efficiency under real-time constraints. Exper-
+iments on RWF-2000 and the school-oriented RWF-2000+
+dataset show that lightweight streaming architectures, partic-
+ularly MoViNet-Stream variants, achieve a favorable balance
+between accuracy and practical deployability compared with
+conventional 3D CNN-based baselines. Edge-device mea-
+surements on an NVIDIA Jetson AGX Orin further indicate
+that streaming inference, combined with mixed-precision
+optimization, enables real-time on-device detection with low
+computational overhead. Overall, our findings suggest that
+accuracy-centric evaluation alone is insufficient for surveil-
+lance applications, and that deployment-aware benchmarking
+is essential for real-world school monitoring systems.
+Future work will extend RWF-2000+ along two direc-
+tions. First, we will incorporate a dedicated early-warning
+evaluation protocol to quantify the minimum temporal ob-
+servation window required for stable alerting (e.g., sub-
+second triggering behavior) in streaming settings. Second,
+we will expand the Non-Fight class with additional hard-
+negative activities (e.g., high-motion actions and prolonged
+close-contact interactions) to further reduce false alarms
+under realistic school dynamics. Finally, we will explore
+multimodal cues (e.g., pose or audio when available) to
+improve robustness while maintaining real-time performance
+on embedded devices.
+REFERENCES
+[1] J. J. Turanovic and S. E. Siennick, “The causes and consequences of
+school violence: A review.” National Institute of Justice, 2022.
+[2] S. A. Putri, D. C. P. Buani, A. Rifa’i, and I. Nawawi, “Adaptive hybrid
+deep learning with recursive feature elimination for physical violence
+detection.” International Journal of Advanced Computer Science &
+Applications, vol. 16, no. 10, 2025.
+[3] A. Negi, “Enhancing surveillance security through violence detection
+using advanced deep learning algorithms,” Ph.D. dissertation, Dublin,
+National College of Ireland, 2025.
+[4] R. Jeevan, B. Avanthika et al., “Intelligent video surveillance systems
+with violence detection,” in 2025 International Conference on Data
+Science, Agents & Artificial Intelligence (ICDSAAI).
+IEEE, 2025,
+pp. 1–6.
+[5] P. M. Sethi, H. Mohapatra, A. K. Dalai, P. B. Landge, and S. R. M.
+School, “Deep learning-based violence detection: A yolo v7 approach
+for real-world security applications,” in 2025 International Conference
+on Advancements in Smart, Secure and Intelligent Computing (ASSIC).
+IEEE, 2025, pp. 1–8.
+[6] S. Shreenithi, K. Srinidhi, G. Jeyakumar, T. Senthilkumar, S. Vasan,
+and M. A. Babu, “Security alert initiative for violence undertaking–
+a violence detection system in college environment,” in 2025 4th
+International Conference on Sentiment Analysis and Deep Learning
+(ICSADL).
+IEEE, 2025, pp. 1569–1577.
+[7] R. Vijeikis, V. Raudonis, and G. Dervinis, “Efficient violence detec-
+tion in surveillance,” Sensors, vol. 22, no. 6, p. 2216, 2022.
+[8] M. Cheng, K. Cai, and M. Li, “Rwf-2000: An open large scale video
+database for violence detection,” in 2020 25th International conference
+on pattern recognition (ICPR).
+IEEE, 2021, pp. 4183–4190.
+[9] M. Torre, “Anomaly and violence detection in surveillance videos,”
+Ph.D. dissertation, Politecnico di Torino, 2023.
+[10] G. Kaur and S. Singh, “An ensemble based approach for violence
+detection in videos using deep transfer learning,” Multimedia Tools
+and Applications, vol. 84, no. 12, pp. 11 001–11 025, 2025.
+National Conference on Artificial Intelligence (FJCAI) - Can Tho, March 27–28, 2026
+[11] H. Khan, X. Yuan, L. Qingge, and K. Roy, “Violence detection from
+industrial surveillance videos using deep learning,” IEEE Access,
+2025.
+[12] S. T. Y. Aung, W. Kusakunniran, and Y. K. Hooi, “Leveraging fusion
+methods of human pose and motion dynamics for accurate violence
+detection in video surveillance,” IEEE Access, 2025.
+[13] S. Zhu and C. Hu, “Research on violence action recognition method
+based on two-stream spatiotemporal network,” in Proceedings of the
+5th International Conference on Computer Information and Big Data
+Applications, 2024, pp. 733–740.
+[14] J. Wang, D. Zhao, H. Li, and D. Wang, “Lightweight violence
+detection model based on 2d cnn with bi-directional motion attention,”
+Applied Sciences, vol. 14, no. 11, p. 4895, 2024.
+[15] N. D¨undar, A. S. Kec¸eli, A. Kaya, and H. Sever, “A shallow 3d con-
+volutional neural network for violence detection in videos,” Egyptian
+Informatics Journal, vol. 26, p. 100455, 2024.
+[16] N. Tran, H. Nguyen, D. Ly, and H. D. Nguyen, “Violence detection
+using skeleton data with graph convolutional networks,” in Interna-
+tional Conference on Intelligent Systems and Data Science. Springer,
+2024, pp. 86–97.
+[17] N. Tran, H. Nguyen, D. Ly, K. Ngo, and H. D. Nguyen, “Advancing
+violence detection with graph-based skeleton motion analysis,” SN
+Computer Science, vol. 6, no. 6, pp. 1–18, 2025.
+[18] D. Kondratyuk, L. Yuan, Y. Li, L. Zhang, M. Tan, M. Brown,
+and B. Gong, “Movinets: Mobile video networks for efficient video
+recognition,” in Proceedings of the IEEE/CVF conference on computer
+vision and pattern recognition, 2021, pp. 16 020–16 030.
